@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import curses
 import json
 import os
 import shutil
@@ -9,6 +8,11 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
+
+try:
+    import curses
+except ModuleNotFoundError:
+    curses = None
 
 
 @dataclass
@@ -190,6 +194,45 @@ def _description_view(text: str, offset: int, width: int) -> str:
     if width <= 3:
         return "." * width
     return text[safe_offset : safe_offset + width - 3] + "..."
+
+
+def _choose_repository_fallback(repos: list[Repo]) -> Repo | None:
+    print("Interactive terminal UI is unavailable on this platform.")
+    print("Using text-mode selection instead.")
+    print()
+    print("Type a search query, enter a number to select, or 'q' to cancel.")
+
+    query = ""
+    while True:
+        filtered = _match_repos(repos, query)
+        if not filtered:
+            print(f"No repositories match '{query}'.")
+        else:
+            print()
+            print(f"Matches: {len(filtered)}")
+            preview = filtered[:20]
+            for idx, repo in enumerate(preview, start=1):
+                visibility = "private" if repo.is_private else "public"
+                updated = _format_relative_time(repo.updated_at)
+                print(f"{idx:>2}) {repo.full_name} [{visibility}] {updated}")
+            if len(filtered) > len(preview):
+                print(f"... and {len(filtered) - len(preview)} more")
+
+        raw = input("Select number, /search, or q: ").strip()
+        if not raw:
+            continue
+        if raw.lower() in {"q", "quit", "exit"}:
+            return None
+        if raw.startswith("/"):
+            query = raw[1:].strip()
+            continue
+        if raw.isdigit():
+            choice = int(raw)
+            if 1 <= choice <= min(20, len(filtered)):
+                return filtered[choice - 1]
+            print("Invalid selection number.")
+            continue
+        query = raw
 
 
 def _chooser(stdscr, repos: list[Repo]) -> Repo | None:
@@ -384,6 +427,8 @@ def _chooser(stdscr, repos: list[Repo]) -> Repo | None:
 
 
 def choose_repository(repos: list[Repo]) -> Repo | None:
+    if curses is None:
+        return _choose_repository_fallback(repos)
     try:
         return curses.wrapper(_chooser, repos)
     finally:
@@ -392,11 +437,11 @@ def choose_repository(repos: list[Repo]) -> Repo | None:
             curses.nocbreak()
             curses.echo()
             curses.endwin()
-        except curses.error:
+        except Exception:
             pass
         try:
             curses.curs_set(1)
-        except curses.error:
+        except Exception:
             pass
 
 
