@@ -39,6 +39,28 @@ List repositories from a specific owner (user or org):
 ./cri <owner>
 ```
 
+## Build Standalone Binaries (No Python Runtime Needed)
+
+The source file stays as `cri`, and binaries are generated into `bin/`.
+
+Build for your current OS/arch:
+
+```bash
+./scripts/build-cri.sh
+```
+
+Output naming convention:
+
+- Linux x86_64: `bin/cri-linux-x86_64`
+- macOS arm64: `bin/cri-darwin-arm64`
+- Windows x86_64: `bin/cri-windows-x86_64.exe`
+
+To build all supported OS binaries, run the GitHub Actions workflow:
+
+- `.github/workflows/build-cri-binaries.yml`
+
+This produces downloadable artifacts, one per target OS, each containing the compiled binary.
+
 ## Optional: "Install" as a Global Command
 
 This project does not need compilation. It is a Python script.

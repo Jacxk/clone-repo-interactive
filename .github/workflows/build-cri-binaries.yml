@@ -1,0 +1,62 @@
+name: Build CRI Binaries
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "cri"
+      - ".github/workflows/build-cri-binaries.yml"
+      - "scripts/build-cri.sh"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            os_id: linux
+            arch_id: x86_64
+            exe_suffix: ""
+          - runner: macos-latest
+            os_id: darwin
+            arch_id: arm64
+            exe_suffix: ""
+          - runner: windows-latest
+            os_id: windows
+            arch_id: x86_64
+            exe_suffix: ".exe"
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p bin build
+          python -m PyInstaller \
+            --onefile \
+            --name "cri-${{ matrix.os_id }}-${{ matrix.arch_id }}${{ matrix.exe_suffix }}" \
+            --distpath bin \
+            --workpath build \
+            --specpath build \
+            cri
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cri-${{ matrix.os_id }}-${{ matrix.arch_id }}
+          path: bin/cri-${{ matrix.os_id }}-${{ matrix.arch_id }}${{ matrix.exe_suffix }}
