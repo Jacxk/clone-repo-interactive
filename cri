@@ -384,7 +384,20 @@ def _chooser(stdscr, repos: list[Repo]) -> Repo | None:
 
 
 def choose_repository(repos: list[Repo]) -> Repo | None:
-    return curses.wrapper(_chooser, repos)
+    try:
+        return curses.wrapper(_chooser, repos)
+    finally:
+        # Best-effort terminal recovery for abrupt exits (e.g. Ctrl+C).
+        try:
+            curses.nocbreak()
+            curses.echo()
+            curses.endwin()
+        except curses.error:
+            pass
+        try:
+            curses.curs_set(1)
+        except curses.error:
+            pass
 
 
 def clone_repository(full_name: str, folder: str) -> int:
